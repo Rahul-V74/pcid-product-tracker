@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { Plus, Download, Upload, Trash2, Search } from 'lucide-react'
+import { useRef } from 'react'
+import { Plus, Download, Trash2, Search, Upload } from 'lucide-react'
 import { useFilterStore } from '../store/useFilterStore'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from './ui/Button'
@@ -23,7 +23,7 @@ export function Header({ onAddClick }: { onAddClick: () => void }) {
         status_filter: statusFilter === 'All' ? undefined : statusFilter,
         search: search || undefined,
       })
-      const url = window.URL.createObjectURL(blob)
+      const url = window.URL.createObjectURL(blob as Blob)
       const link = document.createElement('a')
       link.href = url
       link.download = `pcid_records_${new Date().toISOString().split('T')[0]}.xlsx`

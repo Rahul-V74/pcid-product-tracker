@@ -1,8 +1,6 @@
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
 import { recordsApi } from '../services/api'
-import { useFilterStore } from '../store/useFilterStore'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Select } from './ui/Select'
@@ -10,7 +8,6 @@ import { DatePicker } from './ui/DatePicker'
 import { Textarea } from './ui/Textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from './ui/Dialog'
 import type { PCIDRecord, PCIDRecordCreate, PCIDRecordUpdate } from '../types'
-import { cn } from '../lib/utils'
 
 interface RecordFormProps {
   isOpen: boolean
@@ -27,7 +24,7 @@ const statusOptions = [
 export function RecordForm({ isOpen, onClose, record }: RecordFormProps) {
   const queryClient = useQueryClient()
   const isEditing = !!record
-  const [formData, setFormData] = useState<PCIDRecordCreate | PCIDRecordUpdate>({
+  const [formData, setFormData] = useState<PCIDRecordCreate>({
     customer_id: '',
     pcid: '',
     designer_name: '',
@@ -68,7 +65,7 @@ export function RecordForm({ isOpen, onClose, record }: RecordFormProps) {
     e.preventDefault()
     if (!validate()) return
 
-    const payload = {
+    const payload: PCIDRecordCreate = {
       customer_id: formData.customer_id.trim(),
       pcid: formData.pcid.trim(),
       designer_name: formData.designer_name.trim(),
@@ -111,16 +108,20 @@ export function RecordForm({ isOpen, onClose, record }: RecordFormProps) {
     setErrors({})
   }
 
-  if (record) {
-    setFormData({
-      customer_id: record.customer_id,
-      pcid: record.pcid,
-      designer_name: record.designer_name,
-      delivery_date: record.delivery_date ? record.delivery_date.split('T')[0] : '',
-      status: record.status,
-      remarks: record.remarks || '',
-    })
-  }
+  useEffect(() => {
+    if (record) {
+      setFormData({
+        customer_id: record.customer_id,
+        pcid: record.pcid,
+        designer_name: record.designer_name,
+        delivery_date: record.delivery_date ? record.delivery_date.split('T')[0] : '',
+        status: record.status,
+        remarks: record.remarks || '',
+      })
+    } else {
+      resetForm()
+    }
+  }, [record, isOpen])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

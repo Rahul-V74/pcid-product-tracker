@@ -1,17 +1,15 @@
 import { formatDate, getStatusColor, cn } from '../lib/utils'
-import { Edit, Trash2, Download, Upload, Trash } from 'lucide-react'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from './ui/Table'
+import { Edit, Trash2, Download } from 'lucide-react'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './ui/Table'
 import { Button } from './ui/Button'
 import { Badge } from './ui/Badge'
 import { Select } from './ui/Select'
-import { useFilterStore } from '../store/useFilterStore'
 import { recordsApi } from '../services/api'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from './ui/Toast'
 import type { PCIDRecord } from '../types'
 
-export function RecordsTable({ records, onEdit, onDelete }: { records: PCIDRecord[]; onEdit: (record: PCIDRecord) => void; onDelete: (id: number) => void }) {
-  const { page, pageSize, setPage, setPageSize } = useFilterStore()
+export function RecordsTable({ records, onEdit, total, page, pageSize, setPage, setPageSize }: { records: PCIDRecord[]; onEdit: (record: PCIDRecord) => void; total: number; page: number; pageSize: number; setPage: (page: number) => void; setPageSize: (pageSize: number) => void }) {
   const queryClient = useQueryClient()
   const { showToast } = useToast()
 
@@ -114,12 +112,12 @@ export function RecordsTable({ records, onEdit, onDelete }: { records: PCIDRecor
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">
-            Page {page} of {Math.ceil(records.length / pageSize) || 1}
+            Page {page} of {Math.ceil(total / pageSize) || 1}
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page <= 1}
           >
             Previous
@@ -127,8 +125,8 @@ export function RecordsTable({ records, onEdit, onDelete }: { records: PCIDRecor
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page * pageSize >= records.length}
+            onClick={() => setPage(page + 1)}
+            disabled={page * pageSize >= total}
           >
             Next
           </Button>

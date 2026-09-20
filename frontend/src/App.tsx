@@ -6,8 +6,8 @@ import { RecordForm } from './components/RecordForm'
 import { RecordsTable } from './components/RecordsTable'
 import { SummaryCards } from './components/SummaryCards'
 import { useRecords, useSummary } from './hooks/useRecords'
-import { useAuth, useLogin } from './hooks/useAuth'
-import { useAuthStore } from './store/useAuthStore'
+import { useAuth, useLogin, useRegister } from './hooks/useAuth'
+import { useFilterStore } from './store/useFilterStore'
 import { Button } from './components/ui/Button'
 import { Input } from './components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/Card'
@@ -20,13 +20,12 @@ function LoginPage() {
   const [error, setError] = useState('')
   const login = useLogin()
   const { showToast } = useToast()
-  const setAuth = useAuthStore((state) => state.setAuth)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     login.mutate({ username: email, password }, {
-      onSuccess: ({ data }) => {
+      onSuccess: (data) => {
         localStorage.setItem('access_token', data.access_token)
         showToast('success', 'Logged in successfully')
       },
@@ -65,6 +64,83 @@ function LoginPage() {
               {login.isPending ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
+          <p className="mt-6 text-center text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Button variant="ghost" size="sm" onClick={() => window.location.href = '/register'}>
+              Sign up
+            </Button>
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function RegisterPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [error, setError] = useState('')
+  const register = useRegister()
+  const { showToast } = useToast()
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    register.mutate({ email, password, full_name: fullName }, {
+      onSuccess: () => {
+        showToast('success', 'Account created successfully')
+        window.location.href = '/login'
+      },
+      onError: (err: any) => {
+        setError(err.response?.data?.detail || 'Registration failed')
+      },
+    })
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle>Create Account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && <div className="text-red-600 text-sm text-center">{error}</div>}
+            <Input
+              label="Full Name"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Enter your full name"
+              required
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              required
+            />
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+            />
+            <Button type="submit" className="w-full" disabled={register.isPending}>
+              {register.isPending ? 'Creating account...' : 'Create account'}
+            </Button>
+          </form>
+          <p className="mt-6 text-center text-sm text-gray-600">
+            Already have an account?{' '}
+            <Button variant="ghost" size="sm" onClick={() => window.location.href = '/login'}>
+              Sign in
+            </Button>
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -92,9 +168,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function Dashboard() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState<PCIDRecord | null>(null)
-  const { records, isLoading, isError } = useRecords()
+  const { data: recordsData, isError } = useRecords()
   const { data: summary } = useSummary()
-  const { showToast } = useToast()
+  const { page, pageSize, setPage, setPageSize } = useFilterStore()
 
   const handleAddClick = () => {
     setEditingRecord(null)
@@ -126,9 +202,13 @@ function Dashboard() {
         <Header onAddClick={handleAddClick} />
         {summary && <SummaryCards stats={summary} />}
         <RecordsTable
-          records={records?.records || []}
+          records={recordsData?.records || []}
           onEdit={handleEdit}
-          onDelete={() => {}}
+          total={recordsData?.total || 0}
+          page={page}
+          pageSize={pageSize}
+          setPage={setPage}
+          setPageSize={setPageSize}
         />
       </div>
       <RecordForm isOpen={isFormOpen} onClose={handleCloseForm} record={editingRecord} />
@@ -143,6 +223,7 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />} />
         <Route
           path="/*"
           element={

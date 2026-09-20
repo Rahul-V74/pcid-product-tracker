@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios'
 import type { PCIDRecord, PCIDRecordCreate, PCIDRecordUpdate, PCIDRecordList, SummaryStats, ImportResult, Token, LoginCredentials, RegisterData, User } from '../types'
 
 const API_BASE = '/api'
@@ -19,7 +19,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 })
 
 api.interceptors.response.use(
-  (response) => response,
+  (response: AxiosResponse) => response.data,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('access_token')
@@ -30,16 +30,17 @@ api.interceptors.response.use(
 )
 
 export const authApi = {
-  login: (credentials: LoginCredentials) =>
-    api.post<Token>('/auth/login', new URLSearchParams({
+  login: (credentials: LoginCredentials): Promise<Token> =>
+    api.post('/auth/login', new URLSearchParams({
       username: credentials.username,
       password: credentials.password,
     }), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     }),
-  register: (data: RegisterData) =>
-    api.post<User>('/auth/register', data),
-  me: () => api.get<User>('/auth/me'),
+  register: (data: RegisterData): Promise<User> =>
+    api.post('/auth/register', data),
+  me: (): Promise<User> =>
+    api.get('/auth/me'),
 }
 
 export const recordsApi = {
@@ -48,28 +49,33 @@ export const recordsApi = {
     page_size?: number
     search?: string
     status_filter?: string
-  }) => api.get<PCIDRecordList>('/records', { params }),
+  }): Promise<PCIDRecordList> => api.get('/records', { params }),
 
-  summary: () => api.get<SummaryStats>('/records/summary'),
+  summary: (): Promise<SummaryStats> =>
+    api.get('/records/summary'),
 
-  get: (id: number) => api.get<PCIDRecord>(`/records/${id}`),
+  get: (id: number): Promise<PCIDRecord> =>
+    api.get(`/records/${id}`),
 
-  create: (data: PCIDRecordCreate) => api.post<PCIDRecord>('/records', data),
+  create: (data: PCIDRecordCreate): Promise<PCIDRecord> =>
+    api.post('/records', data),
 
-  update: (id: number, data: PCIDRecordUpdate) =>
-    api.patch<PCIDRecord>(`/records/${id}`, data),
+  update: (id: number, data: PCIDRecordUpdate): Promise<PCIDRecord> =>
+    api.patch(`/records/${id}`, data),
 
-  delete: (id: number) => api.delete(`/records/${id}`),
+  delete: (id: number): Promise<void> =>
+    api.delete(`/records/${id}`),
 
-  clearAll: () => api.delete('/records'),
+  clearAll: (): Promise<void> =>
+    api.delete('/records'),
 
-  export: (params: { status_filter?: string; search?: string }) =>
+  export: (params: { status_filter?: string; search?: string }): Promise<Blob> =>
     api.post('/export', params, { responseType: 'blob' }),
 
-  import: (file: File) => {
+  import: (file: File): Promise<ImportResult> => {
     const formData = new FormData()
     formData.append('file', file)
-    return api.post<ImportResult>('/import', formData, {
+    return api.post('/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },

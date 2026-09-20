@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import select, func, col
 from sqlalchemy.ext.asyncio import AsyncSession
 import pandas as pd
@@ -74,9 +74,9 @@ async def register(user_data: UserCreate, session: AsyncSession = Depends(get_se
 
 
 @router.post("/auth/login", response_model=Token)
-async def login(form_data: dict, session: AsyncSession = Depends(get_session)):
-    email = form_data.get("username")
-    password = form_data.get("password")
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: AsyncSession = Depends(get_session)):
+    email = form_data.username
+    password = form_data.password
     result = await session.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(password, user.hashed_password):
