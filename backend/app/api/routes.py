@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import select, func
 from sqlalchemy import delete as sa_delete
@@ -23,10 +23,10 @@ from app.schemas import (
     PCIDRecordList,
     SummaryStats,
     ImportResult,
+    ExportRequest,
     UserCreate,
     UserRead,
     Token,
-    TokenData,
 )
 
 router = APIRouter()
@@ -235,12 +235,12 @@ async def clear_all_records(
 # Export endpoint
 @router.post("/export")
 async def export_records(
-    export_request: dict,
+    export_request: ExportRequest,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    status_filter = export_request.get("status_filter")
-    search = export_request.get("search")
+    status_filter = export_request.status_filter
+    search = export_request.search
 
     query = select(PCIDRecord)
     if search:
@@ -309,11 +309,17 @@ async def import_records(
 
     for idx, row in df.iterrows():
         try:
+            delivery_val = row.get("Delivery Date")
+            parsed_date = None
+            if pd.notna(delivery_val):
+                ts = pd.to_datetime(delivery_val)
+                parsed_date = ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+
             record_data = {
                 "customer_id": str(row["Customer ID"]).strip(),
                 "pcid": str(row["PCID"]).strip(),
                 "designer_name": str(row["Designer Name"]).strip(),
-                "delivery_date": pd.to_datetime(row.get("Delivery Date")) if pd.notna(row.get("Delivery Date")) else None,
+                "delivery_date": parsed_date,
                 "status": str(row.get("Status", "IP")).strip() if pd.notna(row.get("Status")) else "IP",
                 "remarks": str(row.get("Remarks", "")).strip() if pd.notna(row.get("Remarks")) else None,
             }

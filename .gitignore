@@ -12,6 +12,7 @@ env/
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+*.egg-info/
 
 # Node
 node_modules/
@@ -37,10 +38,6 @@ Thumbs.db
 # Database
 *.db
 *.sqlite
-
-# Alembic
-alembic/versions/*.py
-!alembic/versions/.gitkeep
 
 # Logs
 logs/

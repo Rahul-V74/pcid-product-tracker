@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient, useEffect } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../store/useAuthStore'
 import type { LoginCredentials, RegisterData } from '../types'
