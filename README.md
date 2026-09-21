@@ -37,7 +37,7 @@ A full-stack web application for managing customer delivery and PCID status trac
 - Node.js 20+ (for local frontend development)
 - Python 3.11+ (for local backend development)
 
-### Using Docker Compose (Recommended)
+### Local development with Docker Compose
 
 1. Clone and navigate to the project:
 ```bash
@@ -59,6 +59,27 @@ docker-compose up -d
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:8000
    - API Docs: http://localhost:8000/docs
+
+### Production deployment
+
+1. Create a root `.env` file with strong, unique values. Do not commit it:
+
+```bash
+SECRET_KEY=replace-with-a-long-random-secret
+POSTGRES_USER=pcid
+POSTGRES_PASSWORD=replace-with-a-strong-database-password
+POSTGRES_DB=pcid_tracker
+# Optional: comma-free JSON list of allowed browser origins for cross-origin API use
+CORS_ORIGINS=["https://tracker.example.com"]
+```
+
+2. Build and start the production stack:
+
+```bash
+podman compose -f docker-compose.prod.yml up -d --build
+```
+
+The frontend is served on port 80 by default (set `PORT` to change it). Database migrations run automatically before the API starts.
 
 ### Local Development
 

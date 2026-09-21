@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, field_validator
-from app.models import PCIDRecord
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 
 
 class PCIDRecordBase(BaseModel):
@@ -48,8 +47,7 @@ class PCIDRecordRead(PCIDRecordBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PCIDRecordList(BaseModel):
@@ -90,8 +88,7 @@ class UserRead(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):

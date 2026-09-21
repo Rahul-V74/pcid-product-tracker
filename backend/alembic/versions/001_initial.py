@@ -34,6 +34,7 @@ def upgrade() -> None:
     op.create_table(
         'pcid_records',
         sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('owner_id', sa.Integer(), nullable=False),
         sa.Column('customer_id', sa.String(length=100), nullable=False),
         sa.Column('pcid', sa.String(length=100), nullable=False),
         sa.Column('designer_name', sa.String(length=100), nullable=False),
@@ -43,13 +44,16 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.PrimaryKeyConstraint('id'),
+        sa.ForeignKeyConstraint(['owner_id'], ['users.id']),
     )
+    op.create_index(op.f('ix_pcid_records_owner_id'), 'pcid_records', ['owner_id'], unique=False)
     op.create_index(op.f('ix_pcid_records_customer_id'), 'pcid_records', ['customer_id'], unique=False)
     op.create_index(op.f('ix_pcid_records_pcid'), 'pcid_records', ['pcid'], unique=False)
     op.create_index(op.f('ix_pcid_records_id'), 'pcid_records', ['id'], unique=False)
 
 
 def downgrade() -> None:
+    op.drop_index(op.f('ix_pcid_records_owner_id'), table_name='pcid_records')
     op.drop_index(op.f('ix_pcid_records_id'), table_name='pcid_records')
     op.drop_index(op.f('ix_pcid_records_pcid'), table_name='pcid_records')
     op.drop_index(op.f('ix_pcid_records_customer_id'), table_name='pcid_records')

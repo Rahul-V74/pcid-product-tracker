@@ -3,11 +3,15 @@ from typing import Optional
 from sqlmodel import SQLModel, Field, Column, DateTime
 from sqlalchemy import func
 
+# Re-export SQLModel so alembic/env.py can do: from app.models import SQLModel
+__all__ = ["SQLModel", "PCIDRecord", "User"]
+
 
 class PCIDRecord(SQLModel, table=True):
     __tablename__ = "pcid_records"
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    owner_id: int = Field(foreign_key="users.id", index=True)
     customer_id: str = Field(index=True, max_length=100)
     pcid: str = Field(index=True, max_length=100)
     designer_name: str = Field(max_length=100)

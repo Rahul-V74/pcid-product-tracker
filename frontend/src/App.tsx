@@ -25,8 +25,7 @@ function LoginPage() {
     e.preventDefault()
     setError('')
     login.mutate({ username: email, password }, {
-      onSuccess: (data) => {
-        localStorage.setItem('access_token', data.access_token)
+      onSuccess: () => {
         showToast('success', 'Logged in successfully')
       },
       onError: () => {
