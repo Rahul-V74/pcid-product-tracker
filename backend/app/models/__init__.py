@@ -3,6 +3,9 @@ from typing import Optional
 from sqlmodel import SQLModel, Field, Column, DateTime
 from sqlalchemy import func
 
+# Re-export SQLModel so alembic/env.py can do: from app.models import SQLModel
+__all__ = ["SQLModel", "PCIDRecord", "User"]
+
 
 class PCIDRecord(SQLModel, table=True):
     __tablename__ = "pcid_records"

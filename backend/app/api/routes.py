@@ -2,7 +2,8 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlmodel import select, func, col
+from sqlmodel import select, func
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 import pandas as pd
 import io
@@ -227,7 +228,7 @@ async def clear_all_records(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    await session.execute(PCIDRecord.__table__.delete())
+    await session.execute(sa_delete(PCIDRecord))
     await session.commit()
 
 

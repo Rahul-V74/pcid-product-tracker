@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useEffect } from '@tanstack/react-query'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../store/useAuthStore'
 import type { LoginCredentials, RegisterData } from '../types'
@@ -36,9 +36,11 @@ export function useAuth() {
     staleTime: 1000 * 60 * 10,
   })
 
-  if (data) {
-    setAuth(data, token!)
-  }
+  useEffect(() => {
+    if (data) {
+      setAuth(data, token!)
+    }
+  }, [data, token, setAuth])
 
   const logout = () => {
     clearAuth()
