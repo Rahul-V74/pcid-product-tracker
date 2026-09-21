@@ -105,8 +105,8 @@ async def list_records(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(PCIDRecord)
-    count_query = select(func.count(PCIDRecord.id))
+    query = select(PCIDRecord).where(PCIDRecord.owner_id == current_user.id)
+    count_query = select(func.count(PCIDRecord.id)).where(PCIDRecord.owner_id == current_user.id)
 
     if search:
         search_term = f"%{search}%"
@@ -147,10 +147,11 @@ async def get_summary(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    total = await session.execute(select(func.count(PCIDRecord.id)))
-    ip_count = await session.execute(select(func.count(PCIDRecord.id)).where(PCIDRecord.status == "IP"))
-    completed_count = await session.execute(select(func.count(PCIDRecord.id)).where(PCIDRecord.status == "Completed"))
-    hold_count = await session.execute(select(func.count(PCIDRecord.id)).where(PCIDRecord.status == "HOLD"))
+    owner_filter = PCIDRecord.owner_id == current_user.id
+    total = await session.execute(select(func.count(PCIDRecord.id)).where(owner_filter))
+    ip_count = await session.execute(select(func.count(PCIDRecord.id)).where(owner_filter, PCIDRecord.status == "IP"))
+    completed_count = await session.execute(select(func.count(PCIDRecord.id)).where(owner_filter, PCIDRecord.status == "Completed"))
+    hold_count = await session.execute(select(func.count(PCIDRecord.id)).where(owner_filter, PCIDRecord.status == "HOLD"))
 
     return {
         "total_records": total.scalar_one(),
@@ -166,7 +167,7 @@ async def create_record(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    db_record = PCIDRecord.model_validate(record)
+    db_record = PCIDRecord(**record.model_dump(), owner_id=current_user.id)
     session.add(db_record)
     await session.commit()
     await session.refresh(db_record)
@@ -179,7 +180,9 @@ async def get_record(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    result = await session.execute(select(PCIDRecord).where(PCIDRecord.id == record_id))
+    result = await session.execute(
+        select(PCIDRecord).where(PCIDRecord.id == record_id, PCIDRecord.owner_id == current_user.id)
+    )
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -193,7 +196,9 @@ async def update_record(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    result = await session.execute(select(PCIDRecord).where(PCIDRecord.id == record_id))
+    result = await session.execute(
+        select(PCIDRecord).where(PCIDRecord.id == record_id, PCIDRecord.owner_id == current_user.id)
+    )
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -215,7 +220,9 @@ async def delete_record(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    result = await session.execute(select(PCIDRecord).where(PCIDRecord.id == record_id))
+    result = await session.execute(
+        select(PCIDRecord).where(PCIDRecord.id == record_id, PCIDRecord.owner_id == current_user.id)
+    )
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -228,7 +235,7 @@ async def clear_all_records(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    await session.execute(sa_delete(PCIDRecord))
+    await session.execute(sa_delete(PCIDRecord).where(PCIDRecord.owner_id == current_user.id))
     await session.commit()
 
 
@@ -242,7 +249,7 @@ async def export_records(
     status_filter = export_request.status_filter
     search = export_request.search
 
-    query = select(PCIDRecord)
+    query = select(PCIDRecord).where(PCIDRecord.owner_id == current_user.id)
     if search:
         search_term = f"%{search}%"
         query = query.where(
@@ -316,6 +323,7 @@ async def import_records(
                 parsed_date = ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
 
             record_data = {
+                "owner_id": current_user.id,
                 "customer_id": str(row["Customer ID"]).strip(),
                 "pcid": str(row["PCID"]).strip(),
                 "designer_name": str(row["Designer Name"]).strip(),

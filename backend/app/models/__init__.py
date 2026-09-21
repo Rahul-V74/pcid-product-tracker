@@ -11,6 +11,7 @@ class PCIDRecord(SQLModel, table=True):
     __tablename__ = "pcid_records"
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    owner_id: int = Field(foreign_key="users.id", index=True)
     customer_id: str = Field(index=True, max_length=100)
     pcid: str = Field(index=True, max_length=100)
     designer_name: str = Field(max_length=100)
