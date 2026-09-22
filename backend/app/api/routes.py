@@ -57,16 +57,25 @@ async def get_current_user(
     return user
 
 
+async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user
+
+
 # Auth endpoints
 @router.post("/auth/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(User).where(User.email == user_data.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
+    existing_users = await session.execute(select(func.count(User.id)))
+    is_first_user = existing_users.scalar_one() == 0
     user = User(
         email=user_data.email,
         hashed_password=get_password_hash(user_data.password),
         full_name=user_data.full_name,
+        is_superuser=is_first_user,
     )
     session.add(user)
     await session.commit()
@@ -105,8 +114,8 @@ async def list_records(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(PCIDRecord).where(PCIDRecord.owner_id == current_user.id)
-    count_query = select(func.count(PCIDRecord.id)).where(PCIDRecord.owner_id == current_user.id)
+    query = select(PCIDRecord)
+    count_query = select(func.count(PCIDRecord.id))
 
     if search:
         search_term = f"%{search}%"
@@ -147,11 +156,10 @@ async def get_summary(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    owner_filter = PCIDRecord.owner_id == current_user.id
-    total = await session.execute(select(func.count(PCIDRecord.id)).where(owner_filter))
-    ip_count = await session.execute(select(func.count(PCIDRecord.id)).where(owner_filter, PCIDRecord.status == "IP"))
-    completed_count = await session.execute(select(func.count(PCIDRecord.id)).where(owner_filter, PCIDRecord.status == "Completed"))
-    hold_count = await session.execute(select(func.count(PCIDRecord.id)).where(owner_filter, PCIDRecord.status == "HOLD"))
+    total = await session.execute(select(func.count(PCIDRecord.id)))
+    ip_count = await session.execute(select(func.count(PCIDRecord.id)).where(PCIDRecord.status == "IP"))
+    completed_count = await session.execute(select(func.count(PCIDRecord.id)).where(PCIDRecord.status == "Completed"))
+    hold_count = await session.execute(select(func.count(PCIDRecord.id)).where(PCIDRecord.status == "HOLD"))
 
     return {
         "total_records": total.scalar_one(),
@@ -180,9 +188,7 @@ async def get_record(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    result = await session.execute(
-        select(PCIDRecord).where(PCIDRecord.id == record_id, PCIDRecord.owner_id == current_user.id)
-    )
+    result = await session.execute(select(PCIDRecord).where(PCIDRecord.id == record_id))
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -196,9 +202,7 @@ async def update_record(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    result = await session.execute(
-        select(PCIDRecord).where(PCIDRecord.id == record_id, PCIDRecord.owner_id == current_user.id)
-    )
+    result = await session.execute(select(PCIDRecord).where(PCIDRecord.id == record_id))
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -220,9 +224,7 @@ async def delete_record(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    result = await session.execute(
-        select(PCIDRecord).where(PCIDRecord.id == record_id, PCIDRecord.owner_id == current_user.id)
-    )
+    result = await session.execute(select(PCIDRecord).where(PCIDRecord.id == record_id))
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -233,9 +235,9 @@ async def delete_record(
 @router.delete("/records", status_code=status.HTTP_204_NO_CONTENT)
 async def clear_all_records(
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ):
-    await session.execute(sa_delete(PCIDRecord).where(PCIDRecord.owner_id == current_user.id))
+    await session.execute(sa_delete(PCIDRecord))
     await session.commit()
 
 
@@ -249,7 +251,7 @@ async def export_records(
     status_filter = export_request.status_filter
     search = export_request.search
 
-    query = select(PCIDRecord).where(PCIDRecord.owner_id == current_user.id)
+    query = select(PCIDRecord)
     if search:
         search_term = f"%{search}%"
         query = query.where(
@@ -270,7 +272,7 @@ async def export_records(
             "S.No": i,
             "Customer ID": r.customer_id,
             "PCID": r.pcid,
-            "Designer Name": r.designer_name,
+            "Designer Name": r.designer_name or "",
             "Delivery Date": r.delivery_date.strftime("%Y-%m-%d") if r.delivery_date else "",
             "Status": r.status,
             "Remarks": r.remarks or "",
@@ -302,31 +304,44 @@ async def import_records(
 
     content = await file.read()
     try:
-        df = pd.read_excel(io.BytesIO(content))
+        excel_file = pd.ExcelFile(io.BytesIO(content))
+        sheet_name = "Co-ords" if "Co-ords" in excel_file.sheet_names else excel_file.sheet_names[0]
+        df = excel_file.parse(sheet_name)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
 
-    required_columns = ["Customer ID", "PCID", "Designer Name"]
-    for col in required_columns:
-        if col not in df.columns:
-            raise HTTPException(status_code=400, detail=f"Missing required column: {col}")
+    customer_id_column = next((c for c in ("Customer ID", "Customer #") if c in df.columns), None)
+    if customer_id_column is None:
+        raise HTTPException(status_code=400, detail="Missing required column: Customer ID (or Customer #)")
+    if "PCID" not in df.columns:
+        raise HTTPException(status_code=400, detail="Missing required column: PCID")
+
+    delivery_date_column = next((c for c in ("Delivery Date", "Completion Date") if c in df.columns), None)
+    designer_name_column = "Designer Name" if "Designer Name" in df.columns else None
 
     success = 0
     errors = []
 
     for idx, row in df.iterrows():
         try:
-            delivery_val = row.get("Delivery Date")
+            if pd.isna(row.get(customer_id_column)) or pd.isna(row.get("PCID")):
+                continue
+
+            delivery_val = row.get(delivery_date_column) if delivery_date_column else None
             parsed_date = None
             if pd.notna(delivery_val):
                 ts = pd.to_datetime(delivery_val)
                 parsed_date = ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
 
+            designer_name = None
+            if designer_name_column and pd.notna(row.get(designer_name_column)):
+                designer_name = str(row[designer_name_column]).strip()
+
             record_data = {
                 "owner_id": current_user.id,
-                "customer_id": str(row["Customer ID"]).strip(),
+                "customer_id": str(row[customer_id_column]).strip(),
                 "pcid": str(row["PCID"]).strip(),
-                "designer_name": str(row["Designer Name"]).strip(),
+                "designer_name": designer_name,
                 "delivery_date": parsed_date,
                 "status": str(row.get("Status", "IP")).strip() if pd.notna(row.get("Status")) else "IP",
                 "remarks": str(row.get("Remarks", "")).strip() if pd.notna(row.get("Remarks")) else None,

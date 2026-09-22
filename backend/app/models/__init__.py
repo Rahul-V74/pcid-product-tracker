@@ -14,7 +14,7 @@ class PCIDRecord(SQLModel, table=True):
     owner_id: int = Field(foreign_key="users.id", index=True)
     customer_id: str = Field(index=True, max_length=100)
     pcid: str = Field(index=True, max_length=100)
-    designer_name: str = Field(max_length=100)
+    designer_name: Optional[str] = Field(default=None, max_length=100)
     delivery_date: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
     status: str = Field(default="IP", max_length=20)
     remarks: Optional[str] = Field(default=None, max_length=500)
