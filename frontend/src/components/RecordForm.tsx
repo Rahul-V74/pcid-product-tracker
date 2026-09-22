@@ -56,7 +56,6 @@ export function RecordForm({ isOpen, onClose, record }: RecordFormProps) {
     const newErrors: Partial<PCIDRecordCreate> = {}
     if (!formData.customer_id.trim()) newErrors.customer_id = 'Customer ID is required'
     if (!formData.pcid.trim()) newErrors.pcid = 'PCID is required'
-    if (!formData.designer_name.trim()) newErrors.designer_name = 'Designer Name is required'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -68,7 +67,7 @@ export function RecordForm({ isOpen, onClose, record }: RecordFormProps) {
     const payload: PCIDRecordCreate = {
       customer_id: formData.customer_id.trim(),
       pcid: formData.pcid.trim(),
-      designer_name: formData.designer_name.trim(),
+      designer_name: formData.designer_name?.trim() || null,
       delivery_date: formData.delivery_date || null,
       status: formData.status,
       remarks: formData.remarks?.trim() || null,
@@ -113,7 +112,7 @@ export function RecordForm({ isOpen, onClose, record }: RecordFormProps) {
       setFormData({
         customer_id: record.customer_id,
         pcid: record.pcid,
-        designer_name: record.designer_name,
+        designer_name: record.designer_name || '',
         delivery_date: record.delivery_date ? record.delivery_date.split('T')[0] : '',
         status: record.status,
         remarks: record.remarks || '',
@@ -147,10 +146,9 @@ export function RecordForm({ isOpen, onClose, record }: RecordFormProps) {
             placeholder="Enter PCID"
           />
           <Input
-            label="Designer Name *"
-            value={formData.designer_name}
+            label="Designer Name"
+            value={formData.designer_name || ''}
             onChange={(e) => handleChange('designer_name', e.target.value)}
-            error={errors.designer_name}
             placeholder="Enter Designer Name"
           />
           <DatePicker

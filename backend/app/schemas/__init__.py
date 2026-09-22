@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 class PCIDRecordBase(BaseModel):
     customer_id: str
     pcid: str
-    designer_name: str
+    designer_name: Optional[str] = None
     delivery_date: Optional[datetime] = None
     status: str = "IP"
     remarks: Optional[str] = None
@@ -86,6 +86,7 @@ class UserRead(BaseModel):
     email: str
     full_name: Optional[str] = None
     is_active: bool
+    is_superuser: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

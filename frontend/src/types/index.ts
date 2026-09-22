@@ -2,7 +2,7 @@ export interface PCIDRecord {
   id: number
   customer_id: string
   pcid: string
-  designer_name: string
+  designer_name: string | null
   delivery_date: string | null
   status: 'IP' | 'Completed' | 'HOLD'
   remarks: string | null
@@ -13,7 +13,7 @@ export interface PCIDRecord {
 export interface PCIDRecordCreate {
   customer_id: string
   pcid: string
-  designer_name: string
+  designer_name?: string | null
   delivery_date: string | null
   status: 'IP' | 'Completed' | 'HOLD'
   remarks: string | null
@@ -22,7 +22,7 @@ export interface PCIDRecordCreate {
 export interface PCIDRecordUpdate {
   customer_id?: string
   pcid?: string
-  designer_name?: string
+  designer_name?: string | null
   delivery_date?: string | null
   status?: 'IP' | 'Completed' | 'HOLD'
   remarks?: string | null
@@ -53,6 +53,7 @@ export interface User {
   email: string
   full_name: string | null
   is_active: boolean
+  is_superuser: boolean
   created_at: string
 }
 
